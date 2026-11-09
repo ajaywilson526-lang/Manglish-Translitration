@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Manglish PDF Converter</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f6efe0;--card:#fffaf0;--ink:#2b1d12;--mut:#7a6a58;--acc:#a8321f;--line:#dccfb6}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1c1610;--card:#261e15;--ink:#f3e8d4;--mut:#a89983;--acc:#e8694f;--line:#43362a}}
+:root[data-theme="dark"]{--bg:#1c1610;--card:#261e15;--ink:#f3e8d4;--mut:#a89983;--acc:#e8694f;--line:#43362a}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Georgia,"Noto Serif",serif;padding:24px 16px}
+main{max-width:680px;margin:0 auto}
+h1{font-size:2rem;margin:0 0 4px;letter-spacing:-.02em}
+h1 span{color:var(--acc)}
+p.s{color:var(--mut);margin:0 0 22px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+#drop{border:2px dashed var(--acc);text-align:center;cursor:pointer;padding:34px 12px}
+#drop b{display:block;font-size:1.1rem}
+button{font:inherit;background:var(--acc);color:#fff;border:0;border-radius:10px;padding:11px 20px;cursor:pointer}
+button[disabled]{opacity:.4;cursor:default}
+textarea{width:100%;min-height:64px;font:inherit;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px}
+.out{background:var(--bg);border-radius:8px;padding:8px 10px;min-height:2.4em;margin-top:8px;word-break:break-word}
+#log{color:var(--mut);font-size:.92rem;white-space:pre-wrap}
+small{color:var(--mut)}
+.tabs{display:flex;gap:8px;margin-bottom:16px}.tabs button{background:var(--card);color:var(--ink);border:1px solid var(--line)}.tabs button.on{background:var(--acc);color:#fff;border-color:var(--acc)}.tabs button[disabled]{opacity:.45}[hidden]{display:none!important}.pgw{margin-bottom:14px;text-align:center}.pgw canvas{width:100%;height:auto;background:#fff;border:1px solid var(--line);border-radius:6px;box-shadow:0 2px 8px #0002}.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}.bar .sp{flex:1}.bar button.alt{background:var(--card);color:var(--ink);border:1px solid var(--line)}.bar button.alt.on{background:var(--ink);color:var(--bg)}
+input.e{font:inherit;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px 8px;width:100%}.row{margin:8px 0}.row small{display:block}#rows{max-height:420px;overflow-y:auto;margin:10px 0}.bar input.e{flex:1;min-width:110px;width:auto}
+input.e{scroll-margin-top:260px}#pop{position:fixed;left:8px;right:8px;top:calc(env(safe-area-inset-top,0px) + 8px);max-width:680px;margin:0 auto;background:var(--card);border:2px solid var(--acc);border-radius:12px;padding:8px;z-index:20;box-shadow:0 6px 24px #0005}#pop canvas{width:100%;height:auto;background:#fff;border-radius:6px;display:block}#pop .bar{margin-bottom:6px;flex-wrap:nowrap}#pop small{word-break:break-word}
+body.locked main{display:none}#gate{display:none;max-width:380px;margin:12vh auto 0}body.locked #gate{display:block}table.u{width:100%;border-collapse:collapse;font-size:.92rem}table.u td,table.u th{text-align:left;padding:5px 6px;border-bottom:1px solid var(--line)}
+</style></head><body><main>
+<h1>Malayalam <span>→ Manglish</span></h1>
+<p class="s">Upload a Malayalam song-sheet PDF. Preview the result, then download the same PDF with the Malayalam words replaced by Manglish. Everything runs in your browser; your file is never uploaded anywhere.</p>
+
+<div class="tabs"><button id="tabBtnConv" class="on">1. Convert</button><button id="tabBtnPrev" disabled>2. Preview</button></div>
+<section id="tabConv">
+<div class="card" id="drop"><b>Tap to choose a PDF</b><small>or drop it here</small>
+<input id="f" type="file" accept="application/pdf" hidden></div>
+
+<div class="card">
+<button id="go" disabled>Convert &amp; preview</button>
+<div id="log">No file selected.</div>
+</div>
+
+<div class="card"><b>Quick check</b><small> (type Malayalam to preview the transliteration)</small>
+<textarea id="t">ഞാൻ നിന്നെ സ്നേഹിക്കുന്നു, എന്റെ പ്രിയനേ</textarea>
+<div class="out" id="o"></div></div>
+
+</section>
+<section id="tabPrev" hidden>
+<div class="bar"><button class="alt on" id="mOut">Converted</button><button class="alt" id="mOrig">Original</button><button class="alt" id="mEdit">Edit text</button><span class="sp"></span><button id="dlBtn">Download PDF</button></div>
+<div class="card" id="editor" hidden>
+<b>Edit the Manglish text</b><br><small>Each row shows the original Malayalam and the Manglish written into the PDF. Change anything, then tap Apply.</small>
+<div class="bar" style="margin-top:10px"><input class="e" id="fr" placeholder="Find (e.g. ee)"><input class="e" id="rp" placeholder="Replace with"><button class="alt" id="frBtn">Replace all</button></div>
+<div id="rows"></div>
+<div class="bar"><button id="apply">Apply changes</button><button class="alt" id="resetAll">Reset all to automatic</button></div>
+</div>
+<div id="pages"></div>
+<div id="dlmsg" class="s"><small></small></div>
+</section>
+<p><small>Works with PDFs that contain real (selectable) Malayalam Unicode text. Scanned images or PDFs with old non-Unicode Malayalam fonts can't be read reliably. Always proof-read the result: Manglish has no single official spelling.</small></p>
+</main>
+<div id="pop" hidden><div class="bar"><small id="popLbl"></small><span class="sp"></span><button class="alt" id="popX">✕</button></div><canvas id="popCv"></canvas></div>
+<script>
+// ---------- Transliteration ----------
+const C={ക:'k',ഖ:'kh',ഗ:'g',ഘ:'gh',ങ:'ng',ച:'ch',ഛ:'chh',ജ:'j',ഝ:'jh',ഞ:'nj',ട:'t',ഠ:'tt',ഡ:'d',ഢ:'dh',ണ:'n',ത:'th',ഥ:'th',ദ:'d',ധ:'dh',ന:'n',പ:'p',ഫ:'f',ബ:'b',ഭ:'bh',മ:'m',യ:'y',ര:'r',ല:'l',വ:'v',ശ:'sh',ഷ:'sh',സ:'s',ഹ:'h',ള:'l',ഴ:'zh',റ:'r',
+'റ്റ':'tt','ന്റ':'nt','ന്ത':'nth','ങ്ക':'nk','ഞ്ച':'nch','ണ്ട':'nd','ന്ദ':'nd','ന്ധ':'ndh','മ്പ':'mp','മ്ബ':'mb','ണ്ണ':'nn','ന്ന':'nn','ക്ക':'kk','ത്ത':'th'+'th','പ്പ':'pp','മ്മ':'mm','ല്ല':'ll','ള്ള':'ll','ച്ച':'chch','ട്ട':'tt','ങ്ങ':'ng'+'g','യ്യ':'yy','വ്വ':'vv','ഞ്ഞ':'nj'+'nj','ഷ്ട':'sht','സ്ഥ':'sth','ക്ഷ':'ksh'};
+const V={അ:'a',ആ:'aa',ഇ:'i',ഈ:'ee',ഉ:'u',ഊ:'oo',ഋ:'ru',എ:'e',ഏ:'e',ഐ:'ai',ഒ:'o',ഓ:'o',ഔ:'au'};
+const S={'ാ':'aa','ി':'i','ീ':'ee','ു':'u','ൂ':'oo','ൃ':'ru','െ':'e','േ':'e','ൈ':'ai','ൊ':'o','ോ':'o','ൌ':'au','ൗ':'au'};
+const CH={'ൻ':'n','ൺ':'n','ർ':'r','ൽ':'l','ൾ':'l','ൿ':'k'};
+const VIR='്',ML=/[\u0D00-\u0D7F]/;
+const KEYS=Object.keys(C).filter(k=>k.length>1).sort((a,b)=>b.length-a.length);
+function wordML(w){
+  let r='',i=0;
+  while(i<w.length){
+    const ch=w[i];
+    if(V[ch]){r+=V[ch];i++;continue}
+    if(CH[ch]){r+=CH[ch];i++;continue}
+    if(ch==='ം'){r+='m';i++;continue}
+    if(ch==='ഃ'){r+='h';i++;continue}
+    if(ch==='ഽ'||ch==='\u200c'||ch==='\u200d'){i++;continue}
+    let base=null,len=0;
+    for(const k of KEYS){if(w.startsWith(k,i)){base=C[k];len=k.length;break}}
+    if(base===null&&C[ch]!==undefined){base=C[ch];len=1}
+    if(base===null){r+=ch;i++;continue}
+    i+=len;
+    const n=w[i];
+    if(S[n]){r+=base+S[n];i++}
+    else if(n===VIR){
+      i++;
+      while(w[i]==='\u200c'||w[i]==='\u200d')i++;
+      r+= (i>=w.length)? base+'u' : base;   // word-final chandrakkala -> "u"
+    }
+    else r+=base+'a';
+  }
+  return r;
+}
+function tl(s){return s.replace(/[\u0D00-\u0D7F\u200c\u200d]+/g,m=>wordML(m))}
+const $=id=>document.getElementById(id);
+const prev=()=>{$('o').textContent=tl($('t').value)};
+$('t').oninput=prev;prev();
+
+// ---------- PDF processing ----------
+let items=[],dirtyF=false,file=null,outBytes=null,outName='',origBytes=null,pvMode='out';
+function showTab(n){$('pop').hidden=true;$('tabConv').hidden=n!=='conv';$('tabPrev').hidden=n!=='prev';$('tabBtnConv').classList.toggle('on',n==='conv');$('tabBtnPrev').classList.toggle('on',n==='prev');window.scrollTo(0,0)}
+$('tabBtnConv').onclick=()=>showTab('conv');
+$('tabBtnPrev').onclick=()=>showTab('prev');
+async function renderPreview(){
+  const box=$('pages');box.textContent='Rendering preview…';
+  const bytes=pvMode==='out'?outBytes:origBytes;
+  const pdf=await pdfjsLib.getDocument({data:new Uint8Array(bytes).slice()}).promise;
+  box.textContent='';
+  for(let i=1;i<=pdf.numPages;i++){
+    const pg=await pdf.getPage(i),base=pg.getViewport({scale:1});
+    const sc=Math.min(2.5,(Math.min(box.clientWidth||640,900)/base.width)*(window.devicePixelRatio||1));
+    const vp=pg.getViewport({scale:sc});
+    const cv=document.createElement('canvas');cv.width=vp.width;cv.height=vp.height;
+    await pg.render({canvasContext:cv.getContext('2d'),viewport:vp}).promise;
+    const w=document.createElement('div');w.className='pgw';
+    const l=document.createElement('small');l.textContent=(pvMode==='out'?'Converted':'Original')+' · page '+i+' of '+pdf.numPages;
+    w.append(cv,l);box.append(w);
+  }
+}
+async function setMode(m){pvMode=m;$('mOut').classList.toggle('on',m==='out');$('mOrig').classList.toggle('on',m==='orig');try{await renderPreview()}catch(e){$('pages').textContent='Preview failed: '+(e&&e.message||e)}}
+async function buildPdf(){
+  const doc=await PDFLib.PDFDocument.load(origBytes.slice(0),{ignoreEncryption:true});
+  const font=await doc.embedFont(PDFLib.StandardFonts.Helvetica);
+  const pages=doc.getPages();
+  for(const m of items){
+    const pg=pages[m.p-1];
+    pg.drawRectangle({x:m.x-1,y:m.y-m.size*.28,width:m.w+2,height:m.size*1.25,color:PDFLib.rgb(1,1,1)});
+    const txt=m.txt.replace(/[^\x20-\x7E]/g,'');
+    if(!txt.trim())continue;
+    let fs=m.size,tw=font.widthOfTextAtSize(txt,fs);
+    if(tw>m.w*1.6)fs=Math.max(m.size*.55,fs*m.w*1.6/tw);
+    pg.drawText(txt,{x:m.x,y:m.y,size:fs,font,color:PDFLib.rgb(0,0,0)});
+  }
+  return doc.save();
+}
+function dirty(){dirtyF=true;$('dlmsg').firstChild.textContent='You have unapplied edits. Tap Apply changes to refresh the preview (Download also includes them).'}
+function buildRows(){
+  const box=$('rows');box.textContent='';let last=0;
+  items.forEach(m=>{
+    if(m.p!==last){last=m.p;const h=document.createElement('b');h.textContent='Page '+m.p;box.append(h)}
+    const r=document.createElement('div');r.className='row';
+    const s=document.createElement('small');s.textContent=m.src;
+    const inp=document.createElement('input');inp.className='e';inp.value=m.txt;
+    inp.onfocus=()=>showPop(m);
+    inp.oninput=()=>{m.txt=inp.value;dirty();$('popLbl').textContent=popText(m)};
+    r.append(s,inp);box.append(r);
+  });
+}
+let srcDoc=null,popTok=0;const pcache={};
+async function pageImg(p){
+  if(pcache[p])return pcache[p];
+  const pg=await srcDoc.getPage(p),vp=pg.getViewport({scale:2});
+  const cv=document.createElement('canvas');cv.width=vp.width;cv.height=vp.height;
+  await pg.render({canvasContext:cv.getContext('2d'),viewport:vp}).promise;
+  return pcache[p]={cv,vp};
+}
+const popText=m=>'Page '+m.p+' · editing: '+m.src+'  →  '+m.txt;
+async function showPop(m){
+  const tok=++popTok;
+  $('pop').hidden=false;$('popLbl').textContent=popText(m);
+  try{
+    const {cv,vp}=await pageImg(m.p);if(tok!==popTok)return;
+    const r=vp.convertToViewportRectangle([m.x,m.y-m.size*.28,m.x+m.w,m.y+m.size*.97]);
+    const rx=Math.min(r[0],r[2]),ry=Math.min(r[1],r[3]),rw=Math.abs(r[2]-r[0]),rh=Math.abs(r[3]-r[1]);
+    const cw=Math.min(cv.width,Math.max(rw*3,640)),ch=Math.min(cv.height,Math.max(rh*4,cw*.32));
+    const sx=Math.max(0,Math.min(cv.width-cw,rx+rw/2-cw/2)),sy=Math.max(0,Math.min(cv.height-ch,ry+rh/2-ch/2));
+    const pc=$('popCv');pc.width=cw;pc.height=ch;
+    const x=pc.getContext('2d');x.drawImage(cv,sx,sy,cw,ch,0,0,cw,ch);
+    x.fillStyle='rgba(255,214,0,.4)';x.fillRect(rx-sx-3,ry-sy-3,rw+6,rh+6);
+    x.strokeStyle='#d6261b';x.lineWidth=3;x.strokeRect(rx-sx-3,ry-sy-3,rw+6,rh+6);
+  }catch(e){$('popLbl').textContent='Could not show the page: '+(e&&e.message||e)}
+}
+$('popX').onclick=()=>{$('pop').hidden=true};
+$('mEdit').onclick=()=>{const h=!$('editor').hidden;$('editor').hidden=h;$('pop').hidden=true;$('mEdit').classList.toggle('on',!h);if(!h)buildRows()};
+$('frBtn').onclick=()=>{const f=$('fr').value;if(!f)return;items.forEach(m=>{m.txt=m.txt.split(f).join($('rp').value)});buildRows();dirty()};
+$('resetAll').onclick=()=>{items.forEach(m=>{m.txt=m.auto});buildRows();dirty()};
+$('apply').onclick=async()=>{
+  try{$('dlmsg').firstChild.textContent='Applying…';outBytes=await buildPdf();dirtyF=false;await setMode('out');$('dlmsg').firstChild.textContent='Changes applied. Check the preview, then download.'}
+  catch(e){$('dlmsg').firstChild.textContent='Could not apply: '+(e&&e.message||e)}
+};
+$('mOut').onclick=()=>setMode('out');
+$('mOrig').onclick=()=>setMode('orig');
+$('dlBtn').onclick=async()=>{
+  const m=$('dlmsg').firstChild;
+  try{
+    if(dirtyF){outBytes=await buildPdf();dirtyF=false}
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([outBytes],{type:'application/pdf'}));
+    a.download=outName;document.body.appendChild(a);a.click();a.remove();
+    m.textContent='Saved as '+outName;
+  }catch(e){m.textContent='Could not save: '+(e&&e.message||e)}
+};
+const log=m=>$('log').textContent=m;
+$('drop').onclick=()=>$('f').click();
+$('drop').ondragover=e=>e.preventDefault();
+$('drop').ondrop=e=>{e.preventDefault();pick(e.dataTransfer.files[0])};
+$('f').onchange=e=>pick(e.target.files[0]);
+function pick(f){if(!f)return;if(f.type!=='application/pdf'&&!/\.pdf$/i.test(f.name)){log('Please choose a PDF file.');return}
+  file=f;$('go').disabled=false;log('Selected: '+f.name+' ('+Math.round(f.size/1024)+' KB)')}
+
+$('go').onclick=async()=>{
+  $('go').disabled=true;
+  try{
+    log('Reading PDF…');
+    const buf=await file.arrayBuffer();origBytes=buf.slice(0);
+    pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const src=await pdfjsLib.getDocument({data:buf.slice(0)}).promise;srcDoc=src;for(const k in pcache)delete pcache[k];
+    items=[];dirtyF=false;$('editor').hidden=true;$('mEdit').classList.remove('on');
+    for(let p=1;p<=src.numPages;p++){
+      log('Converting page '+p+' of '+src.numPages+'…');
+      const tc=await (await src.getPage(p)).getTextContent();
+      for(const it of tc.items){
+        if(!it.str||!ML.test(it.str))continue;
+        const t=it.transform,size=Math.hypot(t[2],t[3])||10;
+        const txt=tl(it.str).replace(/[^\x20-\x7E]/g,'');
+        items.push({p,x:t[4],y:t[5],size,w:it.width||size*it.str.length*.5,src:it.str,txt,auto:txt});
+      }
+    }
+    const changed=items.length;
+    if(!changed){log('No Malayalam text was found. This PDF may be scanned or use an old font encoding.');$('go').disabled=false;return}
+    outBytes=await buildPdf();
+    outName=file.name.replace(/\.pdf$/i,'')+'-manglish.pdf';
+    log('Rendering preview…');
+    pvMode='out';$('mOut').classList.add('on');$('mOrig').classList.remove('on');
+    $('dlmsg').firstChild.textContent='';
+    $('tabBtnPrev').disabled=false;
+    showTab('prev');
+    await renderPreview();
+    log('Done: '+changed+' Malayalam text pieces converted. Check the Preview tab, then download.');
+  }catch(e){log('Could not convert: '+(e&&e.message||e&&e.code||e))}
+  $('go').disabled=false;
+};
+</script></body></html>
